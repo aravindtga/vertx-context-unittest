@@ -1,57 +1,33 @@
-# vertx-context-unittest Project
+# Fixing Unit Test cases when using Mutiny.Session
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+In repository class Mutiny.Session is used to do the DB operations (**_DataRepository.class_**)
 
-If you want to learn more about Quarkus, please visit its website: https://quarkus.io/ .
+## Exception when testing the DB operations in Unit tests
 
-## Running the application in dev mode
+When the repository method being verified in unit test below exception occurs (**_ReactiveGreetingResourceTest#testDbOperationWithException_**)
 
-You can run your application in dev mode that enables live coding using:
-```shell script
-./mvnw compile quarkus:dev
+```text
+java.lang.IllegalStateException: HR000068: This method should exclusively be invoked from a Vert.x EventLoop thread; currently running on thread 'main'
+
+	at org.hibernate.reactive.common.InternalStateAssertions.assertUseOnEventLoop(InternalStateAssertions.java:40)
+	at org.hibernate.reactive.mutiny.impl.MutinySessionFactoryImpl.proxyConnection(MutinySessionFactoryImpl.java:150)
+	at org.hibernate.reactive.mutiny.impl.MutinySessionFactoryImpl.openSession(MutinySessionFactoryImpl.java:69)
+	at io.quarkus.hibernate.reactive.runtime.ReactiveSessionProducer.createMutinySession(ReactiveSessionProducer.java:23)
+	at io.quarkus.hibernate.reactive.runtime.ReactiveSessionProducer_ProducerMethod_createMutinySession_1321d110ee9e92bda147899150401e0a136779c7_Bean.create(ReactiveSessionProducer_ProducerMethod_createMutinySession_1321d110ee9e92bda147899150401e0a136779c7_Bean.zig:247)
+	at io.quarkus.hibernate.reactive.runtime
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at http://localhost:8080/q/dev/.
+## Fixing the unit using session factory
 
-## Packaging and running the application
+The exception shown above can be fixed by using Mutiny.SessionFactory(**_ReactiveGreetingResourceTest#testDbOperationWithSessionFactory_**)
+and it works as expected
 
-The application can be packaged using:
-```shell script
-./mvnw package
-```
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+## Fixing using unit test using vertx.runOnContext
 
-If you want to build an _über-jar_, execute the following command:
-```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
-```
+When trying to fix the same exception using vertx.runOnContext(**_ReactiveGreetingResourceTest#testDbOperationWithVertx_**), 
+It shows test has been successful independent of what is happening in the test.
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+Fixing using vertx.runOnContext is required when the DB operation is not invoked directly from UT(But invoked internally)
+(**_ReactiveGreetingResourceTest#testUtilInsertWithException_**). At these cases the exception shown above occurs in UT.
 
-## Creating a native executable
-
-You can create a native executable using: 
-```shell script
-./mvnw package -Pnative
-```
-
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
-```shell script
-./mvnw package -Pnative -Dquarkus.native.container-build=true
-```
-
-You can then execute your native executable with: `./target/vertx-context-unittest-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.html.
-
-## Related Guides
-
-
-## Provided Code
-
-### RESTEasy Reactive
-
-Easily start your Reactive RESTful Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+Fixing that with vertx.runOnContext doesn't report the actual failures, it returns success. (_**ReactiveGreetingResourceTest#testUtilInsertWithVertx**_)

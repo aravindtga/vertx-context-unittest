@@ -2,6 +2,7 @@ package com.aravind;
 
 import com.aravind.repository.Data;
 import com.aravind.repository.DataRepository;
+import com.aravind.repository.Utils;
 
 import org.hibernate.reactive.mutiny.Mutiny;
 import org.junit.jupiter.api.Assertions;
@@ -13,7 +14,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.vertx.core.Vertx;
 
 import static io.restassured.RestAssured.given;
-import static org.hamcrest.CoreMatchers.is;
 
 @QuarkusTest
 public class ReactiveGreetingResourceTest {
@@ -27,34 +27,65 @@ public class ReactiveGreetingResourceTest {
     @Inject
     Mutiny.SessionFactory mutinySessionFactory;
 
+    @Inject
+    Utils utils;
+
     @Test
-    public void testHelloEndpoint() {
+    void testHelloEndpoint() {
         given()
                 .when().get("/hello")
                 .then()
                 .statusCode(200);
-
     }
 
     @Test
-    public void testDbOperationWithVertx() {
+    void testDbOperationWithException() {
+        Data data = new Data();
+        data.setId(2L);
+        data.setName("test name");
+        Data receivedData = dataRepository.persist(data).await().indefinitely();
+        Assertions.assertEquals(data, receivedData);
+    }
+
+    @Test
+    void testDbOperationWithVertx() {
         vertx.runOnContext(unused -> {
             Data data = new Data();
             data.setId(2L);
             data.setName("test name");
-            Data receivedData = dataRepository.persist(data).await().indefinitely();
+            dataRepository.persist(data).await().indefinitely();
             Assertions.assertEquals(data, "failure");
         });
     }
 
     @Test
-    public void testDbOperationWithSessionFactory() {
+    void testDbOperationWithSessionFactory() {
         Data data = new Data();
         data.setId(2L);
         data.setName("test name");
         Data receivedData = mutinySessionFactory.withSession(session ->
             dataRepository.persist(data)).await().indefinitely();
         Assertions.assertEquals(data, receivedData);
+    }
+
+    @Test
+    void testUtilInsertWithException() {
+        Data data = new Data();
+        data.setId(2L);
+        data.setName("UtilName");
+        Data receivedData = utils.insertData(2L).await().indefinitely();
+        Assertions.assertEquals(data, receivedData);
+    }
+
+    @Test
+    void testUtilInsertWithVertx() {
+        vertx.runOnContext(unused -> {
+            Data data = new Data();
+            data.setId(2L);
+            data.setName("UtilName");
+            utils.insertData(2L).await().indefinitely();
+            Assertions.assertEquals(data, null);
+        });
     }
 
 }
