@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import javax.inject.Inject;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.vertx.RunOnVertxContext;
+import io.quarkus.test.junit.vertx.UniAsserter;
 import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 import io.vertx.core.Vertx;
 
@@ -65,7 +67,7 @@ public class ReactiveGreetingResourceTest {
         data.setId(2L);
         data.setName("test name");
         Data receivedData = mutinySessionFactory.withSession(session ->
-            dataRepository.persist(data)).await().indefinitely();
+                dataRepository.persist(data)).await().indefinitely();
         Assertions.assertEquals(data, receivedData);
     }
 
@@ -79,12 +81,34 @@ public class ReactiveGreetingResourceTest {
     }
 
     @Test
+    @RunOnVertxContext
+    void testUtilInsertWorking(UniAsserter uniAsserter) {
+        Data data = new Data();
+        data.setId(2L);
+        data.setName("UtilName");
+        uniAsserter.assertThat(() -> utils.insertData(2L), data1 -> {
+            Assertions.assertEquals(data1.getName(), data.getName());
+        });
+    }
+
+    @Test
     void testUtilInsertWithUniAssertSubscriber() {
         Data data = new Data();
         data.setId(2L);
         data.setName("UtilName");
         UniAssertSubscriber<Data> subscriber = utils.insertData(2L).subscribe().withSubscriber(UniAssertSubscriber.create());
         subscriber.awaitItem().assertItem(data).assertCompleted().assertTerminated();
+    }
+
+    @Test
+    void testUtilInsertWithExecuteBlocking() {
+        Data data = new Data();
+        data.setId(8L);
+        data.setName("UtilName1");
+        vertx.executeBlocking(promise -> {
+            Data receivedData = utils.insertData(2L).await().indefinitely();
+            Assertions.assertEquals(data, receivedData);
+        });
     }
 
     @Test

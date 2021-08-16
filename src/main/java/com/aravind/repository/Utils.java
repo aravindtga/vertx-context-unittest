@@ -14,6 +14,6 @@ public class Utils {
         Data data = new Data();
         data.setId(id);
         data.setName("UtilName");
-        return Uni.createFrom().item(dataRepository.persist(data).await().indefinitely());
+        return dataRepository.persist(data);
     }
 }
