@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import javax.inject.Inject;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 import io.vertx.core.Vertx;
 
 import static io.restassured.RestAssured.given;
@@ -75,6 +76,15 @@ public class ReactiveGreetingResourceTest {
         data.setName("UtilName");
         Data receivedData = utils.insertData(2L).await().indefinitely();
         Assertions.assertEquals(data, receivedData);
+    }
+
+    @Test
+    void testUtilInsertWithUniAssertSubscriber() {
+        Data data = new Data();
+        data.setId(2L);
+        data.setName("UtilName");
+        UniAssertSubscriber<Data> subscriber = utils.insertData(2L).subscribe().withSubscriber(UniAssertSubscriber.create());
+        subscriber.awaitItem().assertItem(data).assertCompleted().assertTerminated();
     }
 
     @Test
